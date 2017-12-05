@@ -3,7 +3,10 @@ import random
 
 import numpy as np
 from scipy.io import arff
-from sklearn.metrics import confusion_matrix, roc_auc_score
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, roc_auc_score, roc_curve
+
+import matplotlib.pyplot as plt
 
 
 class Classifier:
@@ -24,19 +27,27 @@ class Classifier:
         self.__balanced_acc_array = []
         self.__auc_array = []
 
+        self.__teach_data = []
+        self.__test_data = []
+        self.__teach_result = []
+        self.__test_result = []
+        self.__decision = []
+
     def calculate_indicators(self):
-        teach_data, test_data, teach_result, test_result = DataManager.split_data(self.__x, self.__y, 0.5)
-        for i in range(0, self.__n):
+        for i in range(self.__n):
+            self.__teach_data, self.__test_data, self.__teach_result, self.__test_result = \
+                train_test_split(self.__x, self.__y, test_size=0.5, random_state=i)
+
             start_time = datetime.now()
-            self.__classifier.fit(teach_data, teach_result)
+            self.__classifier.fit(self.__teach_data, self.__teach_result)
             tick_time = datetime.now()
-            prediction = self.__classifier.predict(test_data)
+            prediction = self.__classifier.predict(self.__test_data)
             tock_time = datetime.now()
             self.__fit_time_array.append(tick_time - start_time)
             self.__predict_time_array.append(tock_time - tick_time)
-            decision = self.__classifier.predict_proba(test_data)
+            self.__decision = self.__classifier.predict_proba(self.__test_data)
 
-            pn, np, nn, pp = confusion_matrix(test_result, prediction).ravel()
+            pn, np, nn, pp = confusion_matrix(self.__test_result, prediction).ravel()
             accuracy = (pp + pn) / (pp + pn + np + nn)
             sensitivity = pp / (pp + nn)
             specificity = pn / (np + pn)
@@ -47,12 +58,22 @@ class Classifier:
             self.__prec_array.append(precision)
             self.__f1_array.append(2 * (precision * sensitivity) / (precision + sensitivity))
             self.__balanced_acc_array.append(0.5 * (sensitivity + specificity))
-            self.__acc_array.append(roc_auc_score(test_result, decision[:, 1]))
+            self.__acc_array.append(roc_auc_score(self.__test_result, self.__decision[:, 1]))
 
     def get_mean_result(self):
-        return np.mean(self.__acc_array), np.mean(self.__sens_array), np.mean(self.__spec_array), np.mean(self.__prec_array), \
-               np.mean(self.__f1_array), np.mean(self.__balanced_acc_array), np.mean(self.__auc_array), \
-               np.mean(self.__fit_time_array), np.mean(self.__predict_time_array)
+        return np.mean(self.__acc_array), \
+               np.mean(self.__sens_array), \
+               np.mean(self.__spec_array), \
+               np.mean(self.__prec_array), \
+               np.mean(self.__f1_array), \
+               np.mean(self.__balanced_acc_array), \
+               np.mean(self.__auc_array), \
+               np.mean(self.__fit_time_array), \
+               np.mean(self.__predict_time_array)
+
+    def get_chart_data(self):
+        fpr, tpr, _ = roc_curve(self.__test_result, self.__decision[:, 1])
+        return fpr, tpr
 
 
 class DataManager:
@@ -78,3 +99,31 @@ class DataManager:
         random.shuffle(x)
         teach_size = int(len(x) * ratio)
         return x[:teach_size], x[teach_size:], y[:teach_size], y[teach_size:]
+
+    @staticmethod
+    def get_nearest(points, cords):
+        dists = [(pow(point[0] - cords[0], 2) + pow(point[1] - cords[1], 2), point)
+                 for point in points]
+        nearest = min(dists)
+        return nearest[1]
+
+
+class PlotGenerator:
+    @staticmethod
+    def roc_chart(classifiers, names):
+        plt.figure(1)
+
+        i = 0
+        for arg in classifiers:
+            fpr, tpr = arg.get_chart_data()
+            plt.plot(fpr, tpr, label=names[i])
+            nearest = DataManager.get_nearest(zip(fpr, tpr), (0, 1))
+            plt.plot(nearest[0], nearest[1], 'r*')
+            i += 1
+        plt.xlim([0.0, 1.01])
+        plt.ylim([0.0, 1.01])
+        plt.xlabel('False positive rate')
+        plt.ylabel('True positive rate')
+        plt.title('Receiver operating characteristic')
+        plt.legend(loc='best')
+        plt.show()
