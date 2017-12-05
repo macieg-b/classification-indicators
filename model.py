@@ -47,7 +47,7 @@ class Classifier:
             self.__predict_time_array.append(tock_time - tick_time)
             self.__decision = self.__classifier.predict_proba(self.__test_data)
 
-            pn, np, nn, pp = confusion_matrix(self.__test_result, prediction).ravel()
+            pn, np, nn, pp = confusion_matrix(self.__test_result, prediction).astype(float).ravel()
             accuracy = (pp + pn) / (pp + pn + np + nn)
             sensitivity = pp / (pp + nn)
             specificity = pn / (np + pn)
@@ -58,7 +58,7 @@ class Classifier:
             self.__prec_array.append(precision)
             self.__f1_array.append(2 * (precision * sensitivity) / (precision + sensitivity))
             self.__balanced_acc_array.append(0.5 * (sensitivity + specificity))
-            self.__acc_array.append(roc_auc_score(self.__test_result, self.__decision[:, 1]))
+            self.__auc_array.append(roc_auc_score(self.__test_result, self.__decision[:, 1]))
 
     def get_mean_result(self):
         return np.mean(self.__acc_array), \

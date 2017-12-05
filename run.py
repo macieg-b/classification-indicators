@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
@@ -32,3 +33,12 @@ classifiers_array.append(mlp_classifier)
 
 PlotGenerator.roc_chart(classifiers_array, ['Bayes', 'Logistic regression', 'k-Neighbours', 'Neural network'])
 
+data_array = [('\\', ['dokładność', 'czułość', 'specyficzność', 'precyzja', 'F1', 'zbalansowana dokładność', 'AUC',
+                    'czasu uczenia', 'czas predykcji']),
+              ('Bayes', bayes.get_mean_result()),
+              ('Logistic regression', logistic_regression.get_mean_result()),
+              ('k-Neighbours', kneighbours_classifier.get_mean_result()),
+              ('Neural network', mlp_classifier.get_mean_result())]
+
+data_frame = pd.DataFrame.from_items(data_array)
+print(data_frame)
